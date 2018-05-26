@@ -21,23 +21,36 @@
 //  THE SOFTWARE.
 import Vapor
 
-public extension HTTPHeaderName {
-    /// X-Content-Type-Options header.
-    public static let xContentTypeOptions = HTTPHeaderName("X-Content-Type-Options")
-}
 
-/// X-Content-Type-Options Headers
+/// Strict-Transport-Security
 ///
-/// Setting this header will prevent the browser from interpreting files as something else than declared by the content type in the HTTP headers
-public final class XContentTypeOptionsMiddleware: Middleware {
+/// HTTP Strict Transport Security (HSTS) is a web security policy mechanism which helps to protect websites against protocol downgrade attacks and cookie hijacking. It allows web servers to declare that web browsers (or other complying user agents) should only interact with it using secure HTTPS connections, and never via the insecure HTTP protocol. HSTS is an IETF standards track protocol and is specified in RFC 6797. A server implements an HSTS policy by supplying a header (Strict-Transport-Security) over an HTTPS connection (HSTS headers over HTTP are ignored).
+public final class StrictTransportSecurityMiddleware: Middleware {
 
-    public init() {}
+    /// The time, in seconds, that the browser should remember that this site is only to be accessed using HTTPS
+    public let seconds: Int
+
+    /// If this optional parameter is specified, this rule applies to all of the site's subdomains as well
+    public let includeSubDomains: Bool
+
+    public init(seconds: Int = 31536000, includeSubDomains: Bool = true) {
+        self.seconds = seconds
+        self.includeSubDomains = includeSubDomains
+    }
 
     public func respond(to request: Request, chainingTo next: Responder) throws -> EventLoopFuture<Response> {
 
         return try next.respond(to: request).map { res in
-            res.http.headers.replaceOrAdd(name: .xContentTypeOptions, value: "nosniff")
+
+            var options = "max-age=\(self.seconds)"
+
+            if self.includeSubDomains == true {
+                options += " ; includeSubDomains"
+            }
+
+            res.http.headers.replaceOrAdd(name: .strictTransportSecurity, value: options)
             return res
         }
     }
+
 }
